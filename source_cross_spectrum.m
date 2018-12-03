@@ -1,3 +1,4 @@
+%Copyright © 2018, Qin He (Lily)
 % source cross spectrum computation
 function [SCS,E,SNR] = source_cross_spectral(L,X,f,e,df)
 %X = zef.measurements(e,:);e=5;
