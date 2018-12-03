@@ -1,4 +1,4 @@
-
+%Copyright © 2018, Qin He (Lily)
 % zef_MEG.V = rand(271,271);
 % zef_MEG.G = rand(360,227871);
 % zef_MEG.S = rand(271,227871);
