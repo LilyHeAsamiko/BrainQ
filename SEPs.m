@@ -1,4 +1,4 @@
-
+%Copyright ¬© 2018, Qin He (Lily)
 %%Preprocessing
 EEG = zef_EEG.measurements;
 MEG = zef_MEG.measurements;
@@ -44,7 +44,7 @@ title('SEPs for MEG');
 
 pspectrum(zef.measurements(1,:))
 
- %time-frequency transformation(Hanning window = ìraised cosineî.............)
+ %time-frequency transformation(Hanning window = ‚Äúraised cosine‚Äù.............)
 
 M = 70;         % Window length
 
