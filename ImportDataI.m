@@ -1,4 +1,4 @@
-
+%Copyright © 2018, Qin He (Lily)
 %clear
 i = 1;
 ampdif = zeros(64, 50); angdif = zeros(64, 50); locdif = zeros(64, 50);
