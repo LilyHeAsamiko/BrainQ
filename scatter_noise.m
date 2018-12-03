@@ -1,3 +1,4 @@
+%Copyright © 2018, Qin He (Lily)
 %exploring the data with the relation of noise and location difference, angle difference
 %X = X1; Y3 = Y31;
 X = X2; Y3 = Y32;
