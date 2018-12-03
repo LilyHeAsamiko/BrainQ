@@ -1,3 +1,4 @@
+%Copyright © 2018, Qin He (Lily)
 % cross spectrum matrix computation
 function [CS,E,SNR] = cross_spectral(X,f,e,df)
 %X = zef.measurements(e,:);
