@@ -1,3 +1,4 @@
+%Copyright © 2018, Qin He (Lily)
 %% split the data into training data and test data
 %X = X2, Y =Y2;
 %X = X1, Y =Y1;
