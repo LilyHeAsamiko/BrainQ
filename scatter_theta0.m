@@ -1,3 +1,4 @@
+%Copyright © 2018, Qin He (Lily)
 % exploring the data with the relation of location(superficial, deep, pair) and location difference, angle difference 
 %X = X1; Y = Y1;
 X = X2; Y = Y2;
