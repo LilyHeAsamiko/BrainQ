@@ -1,3 +1,4 @@
+%Copyright © 2018, Qin He (Lily)
 %% SVM classifier
 rng(1); % For reproducibility
  
