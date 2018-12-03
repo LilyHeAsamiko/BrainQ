@@ -1,4 +1,4 @@
-
+%Copyright © 2018, Qin He (Lily)
 %%import conditional mean
 function accuracy = DA_loc_prediction (Train_data,fs) 
 data = [Train_data(:,fs) Train_data(:,8)];
