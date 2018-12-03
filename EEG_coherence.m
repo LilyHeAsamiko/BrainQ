@@ -1,3 +1,4 @@
+%Copyright © 2018, Qin He (Lily)
 %%EEG data
 % direct coherence
 
