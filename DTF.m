@@ -1,4 +1,4 @@
-%Copyright © 2018, Qin He (Lily)
+%Copyright Â© 2014, Qin He (Lily)
 function [DTFX] = DTF(X,i,j,f)
 %X=EEG_T;i=4;j=5;f=6;
 A = corr(X);
