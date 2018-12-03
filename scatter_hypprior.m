@@ -1,3 +1,4 @@
+%Copyright © 2018, Qin He (Lily)
 %exploring the data with the relation of hyperprior and location difference, angle difference 
 %X = X1; Y2 = Y21;
 X = X2; Y2 = Y22;
