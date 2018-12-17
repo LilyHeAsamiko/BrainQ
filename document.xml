@@ -1,0 +1,1088 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[classdef somatosensory < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        Somatosensory                   matlab.ui.Figure
+        UIAxes                          matlab.ui.control.UIAxes
+        Label                           matlab.ui.control.Label
+        DropDown                        matlab.ui.control.DropDown
+        coherenceanalysisDropDownLabel  matlab.ui.control.Label
+        coherenceanalysisDropDown       matlab.ui.control.DropDown
+        DropDown_2                      matlab.ui.control.Label
+        EEGMEGchannels3a3b1KnobLabel    matlab.ui.control.Label
+        EEGMEGchannels3a3b1Knob         matlab.ui.control.DiscreteKnob
+        ClinicalDataButtonGroup         matlab.ui.container.ButtonGroup
+        EEGButton                       matlab.ui.control.RadioButton
+        MEGButton                       matlab.ui.control.RadioButton
+        HanningWindowforForForierTransformEditFieldLabel  matlab.ui.control.Label
+        HanningWindowforForForierTransformEditField  matlab.ui.control.NumericEditField
+        EditField_2                     matlab.ui.control.NumericEditField
+        EditField_3                     matlab.ui.control.NumericEditField
+        FFTlengthLabel                  matlab.ui.control.Label
+        fsamplingLabel                  matlab.ui.control.Label
+        FpassLabel                      matlab.ui.control.Label
+        spectralanalysisDropDownLabel   matlab.ui.control.Label
+        spectralanalysisDropDown        matlab.ui.control.DropDown
+        ForwardSimulationLabel          matlab.ui.control.Label
+        DropDown_3                      matlab.ui.control.DropDown
+        GscatterDropDownLabel           matlab.ui.control.Label
+        GscatterDropDown                matlab.ui.control.DropDown
+        SyntheticDataButtonGroup        matlab.ui.container.ButtonGroup
+        IAS_MAPresultButton             matlab.ui.control.RadioButton
+        CMresultButton                  matlab.ui.control.RadioButton
+        PredictionEvaluationDropDownLabel  matlab.ui.control.Label
+        PredictionEvaluationDropDown    matlab.ui.control.DropDown
+        SVMOutlierDetectionButton       matlab.ui.control.Button
+        HanningWindowforForForierTransformEditField_2  matlab.ui.control.NumericEditField
+        HanningWindowforForForierTransformEditField_3  matlab.ui.control.NumericEditField
+        HanningWindowforForForierTransformEditField_4  matlab.ui.control.NumericEditField
+        tendEditFieldLabel              matlab.ui.control.Label
+        tendEditField                   matlab.ui.control.NumericEditField
+        HanningWindowforForForierTransformEditField_5  matlab.ui.control.NumericEditField
+        FstopLabel                      matlab.ui.control.Label
+        WindowlengthsLabel_2            matlab.ui.control.Label
+        ZeroPadLabel_2                  matlab.ui.control.Label
+        tstartLabel                     matlab.ui.control.Label
+    end
+
+
+    properties (Access = private)
+        Plot = "";
+        EEG(72,390)  % EEG clinical raw data
+        MEG(271,390)  % MEG clinical raw data
+        clinical_data = [];
+        datatype = 'EEG';
+        synthetic_data;
+        sensors;
+        EEG_T(72,360);  % EEG clinical cleaned data
+        MEG_T(271,360);   % MEG clinical cleaned data
+        Win = 31; % Windowlength
+        FFT = 75; % FFTlength
+        Ch; % Channel number
+        Fsampling = 1200;
+        fpass;
+        fstop;
+        tstart;
+        tend;
+        zeropads;
+        L;
+        X1;% for machine learning training data1
+        Y1;% for theta0 labels data1
+        X2;% for machine learning training data2
+        Y2;% for theta0 labels data2 
+        data1; %dipole restruction results with IAS-MAP estimators 
+        data2; %dipole restruction results with CM estimators 
+        Y11 % for whole data1 location labels 
+        Y21 % for whole data1 location labels 
+        Y31 % for whole data1 location labels 
+        Y12 % for whole data1 location labels 
+        Y22 % for whole data1 location labels 
+        Y32 % for whole data1 location labels 
+    end
+
+    methods (Access = private)
+%        function [H,Ef] = MVAR1(X,t1,t2) 
+%            for i = 1:size(X,1)
+%                 [~, ind(i)] = min(abs(real(Xf(i))-f));
+%                     for j = 1: size(X,2)
+%                         Af(i,j)= corr(X(:,ind(i))),X(:,j));
+%                         H{i}=inv(Af(1:i,1:i));
+%                     end
+%         end
+        function [H,Ef] = MVAR(X,t1,t2)
+                        X = zef_MEG_measurements;
+                        V = zef_MEG_V;
+                        G = zef_MEG_G;
+                        L = zef_MEG_L;
+                        S = zef_MEG_S;
+                        A = corr(X);
+                        Af = fft(A);
+                        Xf = fft(X); 
+                        H = V'*(S-L)*G';
+
+        end
+
+
+    end
+
+
+    methods (Access = private)
+
+        % Code that executes after component creation
+        function startupFcn(app)
+           switch app.datatype
+               case 'EEG' % EEG electrodes
+                    app.EEG_sensors = load('zef_EEG_sensors');
+                    figure
+                    plot(zef_MEG_sensors(:,1),zef_MEG_sensors(:,2),'o');
+                      [r1,c1]=find(H>8e06);
+                      [r2,c2]=find(H<8e06);
+                      plot(zef_MEG_sensors(r1,1),zef_MEG_sensors(r1,2),'r-');
+                      hold on;
+                      plot(zef_MEG_sensors(r2,1),zef_MEG_sensors(r2,2),'b-');
+                      
+                      figure,
+                      spectrogram(H(5,:));
+                case 'MEG' % MEG coils
+                    app.MEG_sensors = load('zef_MEG_sensors');
+                    figure
+                    plot(zef_MEG_sensors(:,1),zef_MEG_sensors(:,2),'o');
+                      [r1,c1]=find(H>8e06);
+                      [r2,c2]=find(H<8e06);
+                      plot(zef_MEG_sensors(r1,1),zef_MEG_sensors(r1,2),'r-');
+                      hold on;
+                      plot(zef_MEG_sensors(r2,1),zef_MEG_sensors(r2,2),'b-');
+           end
+        end
+
+        % Selection changed function: ClinicalDataButtonGroup
+        function ClinicalDataButtonGroupSelectionChanged(app, event)
+            app.datatype = app.ClinicalDataButtonGroup.SelectedObject;
+            switch datatype 
+                case 'EEG'
+                    app.EEG = load('zef_EEG_measurements');
+                case 'MEG'
+                    app.MEG = load('zef_MEG_measurements');
+            end
+        end
+
+        % Value changed function: DropDown
+        function DropDownValueChanged(app, event)
+            value = app.DropDown.Value;
+            %Transformation
+            EEG_Z = zscore(app.EEG); %student normalization
+            MEG_Z = zscore(app.MEG);
+            
+            %Baseline correction of ERP analysis
+            for i = 1:360
+                ERP_BE(:,i) = mean(EEG_Z(:,i:i+29),2);
+                Pvalue(:,i) = ttest(ERP_BE(:,i),EEG_Z(:,i))
+                ERP_BM(:,i) = mean(MEG_Z(:,i:i+29),2);
+                Pvalue(:,i) = ttest(ERP_BM(:,i),MEG_Z(:,i))
+            end
+            %Truncation
+            app.EEG_T = EEG_Z(:,31:390)-ERP_BE(:);
+            app.MEG_T = MEG_Z(:,31:390)-ERP_BM(:);
+            
+            if clinical_data == 'EEG'
+                switch value
+                case 'ERP-Corrected Baseline '                 
+                    plot(app.UIAxes,1:360,app.EEG_T(app.Ch,:),'b--',1:360,ERP_BE(app.Ch,:),'r');
+                    xlabel(app.UIAxes,'Time');
+                    ylabel(app.UIAxes,'Amplitude')
+                    legend(app.UIAxes,'Corrected Baseline','ERP');
+                    title(app.UIAxes,'Corrected Baseline via ERP for EEG');
+                case 'GBMF Potential'
+                    k = size(app.EEG_T,1);
+                    m = mean(mean(app.EEG_T,2));
+                    GMFP_E = sqrt(sum(((app.EEG_T-m).^2),1)/k);%Global mean field potential
+                    plot(app.UIAxes,1:360,app.EEG(:,31:390),'b',1:360,app.GMFP_E,'r');
+                    xlabel(app.UIAxes,'Time');
+                    ylabel(app.UIAxes,'Amplitude')
+                    legend(app.UIAxes,'Measurements','GMFP');
+                    title(app.UIAxes,'SEPs for EEG');
+                case 'Log Power'
+                    plot(app.UIAxes,1:360,log(app.EEG_T(app.Ch,:)),'b--',1:360,ERP_BE(app.Ch,:),'r');
+                case 'Pvalues'
+                    plot(app.UIAxes,1:360,Pvalue(app.Ch,:))
+             elseif clinical_data == 'MEG'
+                switch value
+                case 'GBMF Potential'
+                    plot(app.UIAxes,1:360,app.MEG_T(app.Ch,:),'b--',1:360,ERP_BE(app.Ch,:),'r');
+                    xlabel(app.UIAxes,'Time');
+                    ylabel(app.UIAxes,'Amplitude')
+                    legend(app.UIAxes,'Corrected Baseline','ERP');
+                    title(app.UIAxes,'Corrected Baseline via ERP for EEG');
+                case 'ERP-Corrected Baseline ' 
+                    k = size(app.MEG_T,1);
+                    m = mean(mean(app.MEG_T,2));
+                    GMFP_E = sqrt(sum(((app.MEG_T-m).^2),1)/k);
+                    plot(app.UIAxes,1:360,app.MEG(:,31:390),'b',1:360,GMFP_E,'r');
+                    xlabel(app.UIAxes,'Time');
+                    ylabel(app.UIAxes,'Amplitude')
+                    legend(app.UIAxes,'Measurements','GMFP');
+                    title(app.UIAxes,'SEPs for EEG');
+                case 'Log Power'
+                    plot(app.UIAxes,1:360,log(app.MEG_T(app.Ch,:)),'b--',1:360,ERP_BM(app.Ch,:),'r');
+                case 'Pvalues'
+                    plot(app.UIAxes,1:360,Pvalue(app.Ch,:))   
+        end
+
+        % Value changed function: EEGMEGchannels3a3b1Knob
+        function EEGMEGchannels3a3b1KnobValueChanged(app, event)
+            app.Ch = app.EEGMEGchannels3a3b1Knob.Value;            
+        end
+
+        % Value changed function: 
+        % HanningWindowforForForierTransformEditField
+        function HanningWindowforForForierTransformEditFieldValueChanged(app, event)
+            app.Win = app.HanningWindowforForForierTransformEditField.Value;
+            
+        end
+
+        % Value changed function: 
+        % HanningWindowforForForierTransformEditField_3
+        function HanningWindowforForForierTransformEditField_3ValueChanged(app, event)
+            app.Fsampling = app.HanningWindowforForForierTransformEditField_3.Value;
+            
+        end
+
+        % Value changed function: 
+        % HanningWindowforForForierTransformEditField_4
+        function HanningWindowforForForierTransformEditField_4ValueChanged(app, event)
+            app.fpass = app.HanningWindowforForForierTransformEditField_4.Value;
+            
+        end
+
+        % Value changed function: 
+        % HanningWindowforForForierTransformEditField_5
+        function HanningWindowforForForierTransformEditField_5ValueChanged(app, event)
+            app.fstop = app.HanningWindowforForForierTransformEditField_5.Value;
+            
+        end
+
+        % Value changed function: 
+        % HanningWindowforForForierTransformEditField_2
+        function HanningWindowforForForierTransformEditField_2ValueChanged(app, event)
+            app.FFT = app.HanningWindowforForForierTransformEditField_2.Value;
+            
+        end
+
+        % Value changed function: EditField_3
+        function EditField_3ValueChanged(app, event)
+            app.tstart = app.EditField_3.Value;
+            
+        end
+
+        % Value changed function: tendEditField
+        function tendEditFieldValueChanged(app, event)
+            app.tend = app.tendEditField.Value;
+            
+        end
+
+        % Value changed function: coherenceanalysisDropDown
+        function coherenceanalysisDropDownValueChanged(app, event)
+            value = app.coherenceanalysisDropDown.Value;
+            switch value 
+                case 'MS coherence'
+                Xa(1,:) =  app.EEG_T(5,:);
+                Xa(2,:) =  app.EEG_T(33,:);
+                Xa(3,:) =  app.EEG_T(18,:);
+                fs = 1200;
+                C(1,:) = mscohere(X(1,:),X(2,:),hamming(100),[],[],fs,'mimo');
+                C(2,:) = mscohere(X(2,:),X(3,:),hamming(100),[],[],fs,'mimo');
+                C(3,:) = mscohere(X(3,:),X(1,:),hamming(100),[],[],fs,'mimo');
+                Cpa3 = (C(3,:)-C(1,:).*C(2,:))./sqrt((1-C(1,:).^2).*(1-C(2,:).^2));
+    
+                [h,p,ci,stats] = ttest(C(3,:),Cpa3);
+                %h=1, p= 2.1533e-31
+                figure,
+                area = ['a','b','1','a'];
+                for i =1:3
+                    subplot(4,1,i)
+                    plot(C(i,:));
+                    title(['coherence between area ',area(i),'& ',area(i+1)])
+                end
+                subplot(4,1,4)
+                plot(Cpa1);
+                title(['partial correlation remove ',area(1)])
+                case 'MVAR coherence'
+                figure,
+                H = {};%cell[n]
+                
+                for i = 1:4
+                    A{i} = corr(Xa(1:90*i,1:90*i));
+                    Af{i} = fft{i};
+                    H{i} = inv{Af{i}};
+                subplot(4,1,i)
+                imagesc(abs(H_mul{90*i}));
+                title(['transform matrix for coherence analysis on time ',int2str(90*i)])
+                end
+               
+                % minimize the BIC criteria to get the best order  
+                case 'BIC'
+                R = H_mul;
+                k = length(R);
+ 
+                for i =1:k
+                n = size(R{i},1);
+                m = mean(R{i},2);
+                RSS = mean(sum(((R{i}-m).^2),2));
+                bics(i) = n*log(RSS/n)*k-k*log(n);
+                end
+                plot(1:k,bics,'--');
+                hold on    
+                [bicR, s] = min(bics(1:k));    
+                plot(s,bicR,'o')
+                xlabel('order p')
+                ylabel('BIC criteria')     
+            end
+        end
+
+        % Value changed function: spectralanalysisDropDown
+        function spectralanalysisDropDownValueChanged(app, event)
+            value = app.spectralanalysisDropDown.Value;
+            switch value 
+                case '(Sensor)_Cross_Spectrum'
+                    Xa = app.MEG_T;
+                    A = corr(Xa(e,:),Xa(e,:));
+                    Af = fft(A);
+                    Xf = fft(Xa);
+                    N =3;
+                    M = size(Xa,1);
+                    T = size(Xa,2);
+                    F = size(Xf,2);
+                    t = f + T/N - F/N;
+                    H = inv(A);
+                    app.CS = A^2./cov(Xa(e,:));
+                    app.CS = app.CS(1:M,1:M);
+                case 'SNR'                                        
+                    E = Xf*Af;
+                    SNR = 10*log(app.CS./(E*E'));
+            end
+        end
+
+        % Value changed function: DropDown_3
+        function DropDown_3ValueChanged(app, event)
+            value = app.DropDown_3.Value;
+            
+            switch value 
+                case 'Source_Partial_Coherence'
+                    app.L = load('zef_MEG_L');
+                    M = size(app.L,1);
+                    app.L = app.L(:,1:M);
+                    SCS = app.L'*app.CS*app.L;
+                    E = APP.Xf*APP.Af;
+                    SNR = 10*log(SCS/(E*E'));
+                case 'ADF on Gamma Band'
+                    load('DTFX2{i}');
+                    for i =1:9
+                        figure,
+                        area(app.UIAxes,DTFX2{i});
+                        xlim(app.UIAxes,'[10 50]')
+                        title(app.UIAxes,'Monkey data recorded in China')
+                    end
+                        
+                case 'PDC on Gamma Band'
+                     load('PDC(i)');
+                    for i =1:9
+                        figure,
+                        area(app.UIAxes,PDC(i)); 
+                        xlim(app.UIAxes,'[0 96]')
+                        title(app.UIAxes,'Somatosensory data recorded in Germany')
+                    end
+             end
+        end
+
+        % Selection changed function: SyntheticDataButtonGroup
+        function SyntheticDataButtonGroupSelectionChanged(app, event)
+            app.synthetic_data = app.SyntheticDataButtonGroup.SelectedObject;
+           switch app.synthetic_data
+                case 'IAS_MAP result'
+                    load('ImportData1')
+                    app.data1 = [app.X1,app.Y1];
+                    app.Y11 = app.X1(:,7);
+                    app.Y21 = app.X1(:,5);
+                    app.Y31 = app.X1(:,6);
+                case 'CM result'
+                    load('ImportDataII')
+                    app.data2 = [app.X2,app.Y2];
+                    app.Y12 = app.X2(:,7);
+                    app.Y22 = app.X2(:,5);
+                    app.Y32 = app.X2(:,6);
+                end
+        end
+
+        % Button pushed function: SVMOutlierDetectionButton
+        function SVMOutlierDetectionButtonPushed(app, event)
+            if app.synthetic_data == 'IAS_MAP result'
+            load('data1');    
+            y = ones(size(app.X1,1),1);
+            rng(1);
+            SVMModel = fitcsvm([app.X1(:,1) app.X1(:,2)],y,'KernelScale','auto','Standardize','on',...
+                'OutlierFraction',0.1);
+        
+            svInd = SVMModel.IsSupportVector;
+            h = 1; % Mesh grid step size
+            % [X1,X2,X3] = meshgrid(min(X(:,1)):h:max(X(:,1)),...
+            %     min(X(:,2)):h:max(X(:,2)),min(X(:,3)):h:max(X(:,3)));
+            [x1,x2] = meshgrid(min(app.X1(:,1)):h:max(app.X1(:,1)),min(app.X1(:,2)):h:max(app.X1(:,2)));
+            % [~,score] = predict(SVMModel,[X1(:),X2(:),X3(:)]);
+            [~,score] = predict(SVMModel,[x1(:),x2(:)]);
+            
+            % scoreGrid = reshape(score,size(X1,1),size(X2,2),size(X3,3));
+            scoreGrid = reshape(score,size(x1,1),size(x2,2)); 
+            figure(5)
+            % plot3(X(:,3),X(:,2),X(:,1),'k.')
+            plot(app.UIAxes,app.X1(:,1),app.X1(:,2),'k.')
+            hold on
+            % plot3(X(svInd,3),X(svInd,2),X(svInd,1),'ro','MarkerSize',10)
+            plot(app.UIAxes,app.X1(svInd,1),app.1(svInd,2),'ro','MarkerSize',5)
+            %contour3([X(svInd,3),X(svInd,1)])
+            contour(app.UIAxes,x1,x2, scoreGrid)
+            colorbar;
+            xlim = [-5 50];
+            ylim = [-10 100];
+            set(app.UIAxes, 'xlim',xlim);
+            set(app.UIAxes, 'ylim',ylim);
+            title(app.UIAxes,'{\bf Data1 Outlier Detection via One-Class SVM}')
+            xlabel(app.UIAxes,'Location difference (mm)')
+            %ylabel('Angle difference (mm)')
+            ylabel(app.UIAxes,'Amplitude difference (mm)')
+            legend(app.UIAxes,'Observation','Support Vector')
+            hold off
+            
+            CVSVMModel = crossval(SVMModel);
+            [~,scorePred] = kfoldPredict(CVSVMModel);
+            outlierRate = mean(scorePred<0) 
+            
+            
+            if app.synthetic_data == 'CM result'
+                load('data2');   
+                y = ones(size(app.X2,1),1);
+            rng(1);
+            SVMModel = fitcsvm([app.X2(:,1) app.X2(:,2)],y,'KernelScale','auto','Standardize','on',...
+                'OutlierFraction',0.1);
+        
+            svInd = SVMModel.IsSupportVector;
+            h = 1; % Mesh grid step size
+            % [X1,X2,X3] = meshgrid(min(X(:,1)):h:max(X(:,1)),...
+            %     min(X(:,2)):h:max(X(:,2)),min(X(:,3)):h:max(X(:,3)));
+            [x1,x2] = meshgrid(min(app.X2(:,1)):h:max(app.X2(:,1)),min(app.X2(:,2)):h:max(app.X2(:,2)));
+            % [~,score] = predict(SVMModel,[X1(:),X2(:),X3(:)]);
+            [~,score] = predict(SVMModel,[x1(:),x2(:)]);
+            
+            % scoreGrid = reshape(score,size(X1,1),size(X2,2),size(X3,3));
+            scoreGrid = reshape(score,size(x1,1),size(x2,2)); 
+            figure(5)
+            % plot3(X(:,3),X(:,2),X(:,1),'k.')
+            plot(app.UIAxes,app.X2(:,1),app.X2(:,2),'k.')
+            hold on
+            % plot3(X(svInd,3),X(svInd,2),X(svInd,1),'ro','MarkerSize',10)
+            plot(app.UIAxes,app.X2(svInd,1),app.X2(svInd,2),'ro','MarkerSize',5)
+            %contour3([X(svInd,3),X(svInd,1)])
+            contour(app.UIAxes,x1,x2, scoreGrid)
+            colorbar;
+            xlim = [-5 50];
+            ylim = [-10 100];
+            set(app.UIAxes, 'xlim',xlim);
+            set(app.UIAxes, 'ylim',ylim);
+            title(app.UIAxes,'{\bf Data1 Outlier Detection via One-Class SVM}')
+            xlabel(app.UIAxes,'Location difference (mm)')
+            %ylabel('Angle difference (mm)')
+            ylabel(app.UIAxes,'Amplitude difference (mm)')
+            legend(app.UIAxes,'Observation','Support Vector')
+            hold off
+            
+            CVSVMModel = crossval(SVMModel);
+            [~,scorePred] = kfoldPredict(CVSVMModel);
+            outlierRate = mean(scorePred<0)  
+            end
+            
+            
+        end
+
+        % Value changed function: GscatterDropDown
+        function GscatterDropDownValueChanged(app, event)
+            value = app.GscatterDropDown.Value;
+            
+            if app.synthetic_data == 'IAS_MAP result'
+                switch value
+                case 'Location'
+                    xlabel(app.UIAxes,'location difference');
+                    ylabel(app.UIAxes,'angle difference');
+                    title(app.UIAxes,'location');
+                    legend(app.UIAxes,'Thalamus_single','Somatosensory_single','Thalamus_paired','Somatosensory_paired')
+                    % h_axes1 = evalin('base','zef.h_axes1');
+                    gscatter(app.UIAxes,app.X1(:,1),app.X1(:,2),app.Y11);
+                case  'Scaling Parameter'
+                    gscatter(app.UIAxes,app.X1(:,1),app.X1(:,2),app.Y1);
+                    xlabel(app.UIAxes,'location difference');
+                    ylabel(app.UIAxes,'angle difference');
+                    title(app.UIAxes,'Theta0');
+                case  'Hyperprior'
+                    gscatter(app.UIAxes,app.X1(:,1),app.X1(:,2),app.Y12);
+                    xlabel(app.UIAxes,'location difference');
+                    ylabel(app.UIAxes,'angle difference');
+                    legend(app.UIAxes,'Gamma','Inverse Gamma')
+                    title(app.UIAxes,'Hyperprior');
+                case  'Noise'
+                    gscatter(app.UIAxes,app.X1(:,2),app.X1(:,3),app.Y13);
+                    xlabel(app.UIAxes,'angle difference');
+                    ylabel(app.UIAxes,'location difference');
+                    title(app.UIAxes,'noise');
+                    set(app.UIAxes , 'xlim');
+                    set(app.UIAxes , 'ylim');
+                end
+            
+               
+            elseif app.synthetic_data == 'CM result'
+                   case 'Location'
+                    xlabel(app.UIAxes,'location difference');
+                    ylabel(app.UIAxes,'angle difference');
+                    title(app.UIAxes,'location');
+                    legend(app.UIAxes,'Thalamus_single','Somatosensory_single','Thalamus_paired','Somatosensory_paired')
+                    % h_axes1 = evalin('base','zef.h_axes1');
+                    gscatter(app.UIAxes,app.X2(:,1),app.X2(:,2),app.Y21);
+                    case  'Scaling Parameter'
+                    gscatter(app.UIAxes,app.X2(:,1),app.X2(:,2),app.Y2);
+                    xlabel(app.UIAxes,'location difference');
+                    ylabel(app.UIAxes,'angle difference');
+                    title(app.UIAxes,'Theta0');
+                    case  'Hyperprior'
+                    gscatter(app.UIAxes,app.X2(:,1),app.X2(:,2),app.Y22);
+                    xlabel(app.UIAxes,'location difference');
+                    ylabel(app.UIAxes,'angle difference');
+                    legend(app.UIAxes,'Gamma','Inverse Gamma')
+                    title(app.UIAxes,'Hyperprior');
+                    case  'Noise'
+                    gscatter(app.UIAxes,app.X2(:,2),app.X2(:,3),app.Y23);
+                    xlabel(app.UIAxes,'angle difference');
+                    ylabel(app.UIAxes,'location difference');
+                    title(app.UIAxes,'noise');
+                    set(app.UIAxes , 'xlim');
+                    set(app.UIAxes , 'ylim');
+            end
+        end
+        end
+
+        % Value changed function: PredictionEvaluationDropDown
+        function PredictionEvaluationDropDownValueChanged(app, event)
+            value = app.PredictionEvaluationDropDown.Value;
+            if app.synthetic_data == 'IAS_MAP result'
+            Train_data = [app.X1(svInd,:),app.Y1(svInd)];
+
+            gscatter(Train_data(:,1),Train_data(:,2),Train_data(:,8))
+                %%validation
+                c = cvpartition(Train_data(:,8), 'k', 5);
+            
+                %feature selection
+                opts = statset('display','iter');
+                [~,p,stats] = manova1([Train_data(:,1:3),Train_data(:,5:8)],Train_data(:,8))
+                fun = @(train_data, train_labels, test_data, test_labels)...
+                    sum(predict(fitcsvm(train_data,train_labels,'KernelFunction','rbf'),test_data) ~= test_labels);
+                [fs, history] = sequentialfs(fun, [Train_data(:,1:3),Train_data(:,5:7)],Train_data(:,8),'cv',c,'options',opts,'nfeatures',3);
+
+            switch value 
+                case 'SVM scaling parameter prediction'
+                    %% SVM classifier
+                    rng(1); % For reproducibility
+                     
+                    %clean training data according to SVM outlier detection
+                    Train_data = [app.X1(svInd,:),app.Y1(svInd)];
+                    classes = unique(app.Y1(svInd));
+                    N = numel(classes);
+                    y = {};
+                    indx = {}
+                    pred = {};
+                    %pred = {zeros(size(Y1(index_tr),1),N)};
+                    pred = {zeros(size(app.Y1(svInd),1),N)};
+                    colors = ['r','g']
+                    figure
+                    
+                    %binary classification
+                    for j = 1:N
+                        
+                        %feature selection
+                        
+                        indx{j} = find(app.Y(svInd)==classes(j));
+                        y{j} = (app.Y(indx{j})==classes(j));  % Create binary classes for each classifier
+                        %cross-validation,fold number = 3
+                        c = cvpartition(Train_data(indx{j},8), 'k', 3);
+                        opts = statset('display','iter');
+                        [~,p,stats] = manova1([Train_data(indx{j},1:3)],Train_data(indx{j},8)==j)
+                        fun = @(train_data, train_labels, test_data, test_labels)...
+                            sum(predict(fitcsvm(train_data,train_labels,'KernelFunction','rbf'),test_data) ~= test_labels);
+                        [fs, history] = sequentialfs(fun, [Train_data(indx{j},1:3),Train_data(indx{j},5:7)],y{j},'cv',c,'options',opts,'nfeatures',3);
+                    
+                        SVMModels{j} = fitcsvm(app.X(indx{j},fs),y{j},'ClassNames',[false true],'Standardize',true,'KernelFunction','gaussian','BoxConstraint',1,'HyperparameterOptimizationOptions',struct('AcquisitionFunctionName','OptimizeHyperparameters','auto',...
+                         'expected-improvement-plus','ShowPlots',true));%box = optimizableVariable('box',[1e-4,1e3],'Transform','log','Optimize',true);
+                    
+                       [pred{j},~] = predict(SVMModels{j},X(indx{j},fs));
+                    %   gscatter(X((index_tr),3),X((index_tr),2),Y1(index_tr),[(j-1)/N j/N (j-1)/N;(j-1)/N j/N (j-1)/N],'xo');
+                    %   [(j-1)/N j/N (j-1)/N;(j-1)/N j/N (j-1)/N]
+                        pred{j} = j*pred{j};    
+                    %    figure
+                        gscatter(app.X1(indx{j},1),app.X1(indx{j},2),pred{j},colors(j),'ox');
+                    %    gscatter(X(indx{j},3),X(indx{j},2),pred(indx{j},j) == y{j}(indx{j},:),colors(j),'ox');
+                        hold on
+                        Pred(j) = sum(pred{j}==y{j})
+                    
+                    end
+                    xlim =[-30 40]
+                    ylim =[-40 140]
+                    title(app.UIAxes,' Theta0 prediction');
+                    xlabel(app.UIAxes,'location difference');
+                    ylabel(app.UIAxes,'angle difference');
+                    legend(app.UIAxes,'10^-5','10^-9')
+                    set(app.UIAxes,'xlim',xlim);
+                    set(app.UIAxes, 'ylim',ylim);
+                    accuracy = sum(Pred)/length(Y1(svInd));
+                    [h,~] = ttest([pred{1,2};pred{1,3};pred{1,4};pred{1,1};],Train_data(:,8),'Alpha',0.01)
+                    
+                case 'Discriminant analysis location prediction'
+                    %% SVM classifier
+                    rng(1); % For reproducibility
+                     
+                    %clean training data according to SVM outlier detection
+                    Train_data = [app.X1(svInd,:),app.Y1(svInd)];
+                    classes = unique(app.Y1(svInd));
+                    N = numel(classes);
+                    y = {};
+                    indx = {}
+                    pred = {};
+                    %pred = {zeros(size(Y1(index_tr),1),N)};
+                    pred = {zeros(size(app.Y1(svInd),1),N)};
+                    colors = ['r','g']
+                    figure
+                    
+                    %binary classification
+                    for j = 1:N
+                        
+                        %feature selection
+                        
+                        indx{j} = find(app.Y1(svInd)==classes(j));
+                        y{j} = (app.Y1(indx{j})==classes(j));  % Create binary classes for each classifier
+                        %cross-validation,fold number = 3
+                        c = cvpartition(Train_data(indx{j},8), 'k', 3);
+                        opts = statset('display','iter');
+                        [~,p,stats] = manova1([Train_data(indx{j},1:3)],Train_data(indx{j},8)==j)
+                        fun = @(train_data, train_labels, test_data, test_labels)...
+                            sum(predict(fitcsvm(train_data,train_labels,'KernelFunction','rbf'),test_data) ~= test_labels);
+                        [fs, history] = sequentialfs(fun, [Train_data(indx{j},1:3),Train_data(indx{j},5:7)],y{j},'cv',c,'options',opts,'nfeatures',3);
+                    
+                        SVMModels{j} = fitcsvm(app.X1(indx{j},fs),y{j},'ClassNames',[false true],'Standardize',true,'KernelFunction','gaussian','BoxConstraint',1,'HyperparameterOptimizationOptions',struct('AcquisitionFunctionName','OptimizeHyperparameters','auto',...
+                         'expected-improvement-plus','ShowPlots',true));%box = optimizableVariable('box',[1e-4,1e3],'Transform','log','Optimize',true);
+                    
+                       [pred{j},~] = predict(SVMModels{j},app.X1(indx{j},fs));
+                    %   gscatter(X((index_tr),3),X((index_tr),2),Y1(index_tr),[(j-1)/N j/N (j-1)/N;(j-1)/N j/N (j-1)/N],'xo');
+                    %   [(j-1)/N j/N (j-1)/N;(j-1)/N j/N (j-1)/N]
+                        pred{j} = j*pred{j};    
+                    %    figure
+                        gscatter(app.X1(indx{j},1),app.X1(indx{j},2),pred{j},colors(j),'ox');
+                    %    gscatter(X(indx{j},3),X(indx{j},2),pred(indx{j},j) == y{j}(indx{j},:),colors(j),'ox');
+                        hold on
+                        Pred(j) = sum(pred{j}==y{j})
+                    
+                    end
+                    xlim =[-30 40]
+                    ylim =[-40 140]
+                    title(app.UIAxes,'Theta0 prediction');
+                    xlabel(app.UIAxes,'location difference');
+                    ylabel(app.UIAxes,'angle difference');
+                    legend(app.UIAxes,'10^-5','10^-9')
+                    set(app.UIAxes,'xlim',xlim);
+                    set(app.UIAxes, 'ylim',ylim);
+                    accuracy = sum(Pred)/length(app.Y(svInd));
+                    [h,~] = ttest([pred{1,2};pred{1,3};pred{1,4};pred{1,1};],Train_data(:,8),'Alpha',0.01)
+            end 
+            elseif app.synthetic_data == 'CM result'
+
+            Train_data = [app.X2(svInd,:),app.Y2(svInd)];
+
+            gscatter(Train_data(:,1),Train_data(:,2),Train_data(:,8))
+                %%validation
+                c = cvpartition(Train_data(:,8), 'k', 5);
+            
+                %feature selection
+                opts = statset('display','iter');
+                [~,p,stats] = manova1([Train_data(:,1:3),Train_data(:,5:8)],Train_data(:,8))
+                fun = @(train_data, train_labels, test_data, test_labels)...
+                    sum(predict(fitcsvm(train_data,train_labels,'KernelFunction','rbf'),test_data) ~= test_labels);
+                [fs, history] = sequentialfs(fun, [Train_data(:,1:3),Train_data(:,5:7)],Train_data(:,8),'cv',c,'options',opts,'nfeatures',3);
+
+            switch value 
+                case 'SVM scaling parameter prediction'
+                    %% SVM classifier
+                    rng(1); % For reproducibility
+                     
+                    %clean training data according to SVM outlier detection
+                    Train_data = [app.X2(svInd,:),app.Y2(svInd)];
+                    classes = unique(app.Y2(svInd));
+                    N = numel(classes);
+                    y = {};
+                    indx = {}
+                    pred = {};
+                    %pred = {zeros(size(Y1(index_tr),1),N)};
+                    pred = {zeros(size(app.Y2(svInd),1),N)};
+                    colors = ['r','g']
+                    figure
+                    
+                    %binary classification
+                    for j = 1:N
+                        
+                        %feature selection
+                        
+                        indx{j} = find(app.Y2(svInd)==classes(j));
+                        y{j} = (app.Y2(indx{j})==classes(j));  % Create binary classes for each classifier
+                        %cross-validation,fold number = 3
+                        c = cvpartition(Train_data(indx{j},8), 'k', 3);
+                        opts = statset('display','iter');
+                        [~,p,stats] = manova1([Train_data(indx{j},1:3)],Train_data(indx{j},8)==j)
+                        fun = @(train_data, train_labels, test_data, test_labels)...
+                            sum(predict(fitcsvm(train_data,train_labels,'KernelFunction','rbf'),test_data) ~= test_labels);
+                        [fs, history] = sequentialfs(fun, [Train_data(indx{j},1:3),Train_data(indx{j},5:7)],y{j},'cv',c,'options',opts,'nfeatures',3);
+                    
+                        SVMModels{j} = fitcsvm(app.X2(indx{j},fs),y{j},'ClassNames',[false true],'Standardize',true,'KernelFunction','gaussian','BoxConstraint',1,'HyperparameterOptimizationOptions',struct('AcquisitionFunctionName','OptimizeHyperparameters','auto',...
+                         'expected-improvement-plus','ShowPlots',true));%box = optimizableVariable('box',[1e-4,1e3],'Transform','log','Optimize',true);
+                    
+                       [pred{j},~] = predict(SVMModels{j},app.X2(indx{j},fs));
+                    %   gscatter(X((index_tr),3),X((index_tr),2),Y1(index_tr),[(j-1)/N j/N (j-1)/N;(j-1)/N j/N (j-1)/N],'xo');
+                    %   [(j-1)/N j/N (j-1)/N;(j-1)/N j/N (j-1)/N]
+                        pred{j} = j*pred{j};    
+                    %    figure
+                        gscatter(app.X2(indx{j},1),app.X2(indx{j},2),pred{j},colors(j),'ox');
+                    %    gscatter(X(indx{j},3),X(indx{j},2),pred(indx{j},j) == y{j}(indx{j},:),colors(j),'ox');
+                        hold on
+                        Pred(j) = sum(pred{j}==y{j})
+                    
+                    end
+                    xlim =[-30 40]
+                    ylim =[-40 140]
+                    title(app.UIAxes,' Theta0 prediction');
+                    xlabel(app.UIAxes,'location difference');
+                    ylabel(app.UIAxes,'angle difference');
+                    legend(app.UIAxes,'10^-5','10^-9')
+                    set(app.UIAxes,'xlim',xlim);
+                    set(app.UIAxes, 'ylim',ylim);
+                    accuracy = sum(Pred)/length(Y(svInd));
+                    [h,~] = ttest([pred{1,2};pred{1,3};pred{1,4};pred{1,1};],Train_data(:,8),'Alpha',0.01)
+                    
+                case 'Discriminant analysis location prediction'
+                    %% SVM classifier
+                    rng(1); % For reproducibility
+                     
+                    %clean training data according to SVM outlier detection
+                    Train_data = [app.X2(svInd,:),app.Y2(svInd)];
+                    classes = unique(app.Y2(svInd));
+                    N = numel(classes);
+                    y = {};
+                    indx = {}
+                    pred = {};
+                    %pred = {zeros(size(Y1(index_tr),1),N)};
+                    pred = {zeros(size(app.Y2(svInd),1),N)};
+                    colors = ['r','g']
+                    figure
+                    
+                    %binary classification
+                    for j = 1:N
+                        
+                        %feature selection
+                        
+                        indx{j} = find(app.Y2(svInd)==classes(j));
+                        y{j} = (app.Y2(indx{j})==classes(j));  % Create binary classes for each classifier
+                        %cross-validation,fold number = 3
+                        c = cvpartition(Train_data(indx{j},8), 'k', 3);
+                        opts = statset('display','iter');
+                        [~,p,stats] = manova1([Train_data(indx{j},1:3)],Train_data(indx{j},8)==j)
+                        fun = @(train_data, train_labels, test_data, test_labels)...
+                            sum(predict(fitcsvm(train_data,train_labels,'KernelFunction','rbf'),test_data) ~= test_labels);
+                        [fs, history] = sequentialfs(fun, [Train_data(indx{j},1:3),Train_data(indx{j},5:7)],y{j},'cv',c,'options',opts,'nfeatures',3);
+                    
+                        SVMModels{j} = fitcsvm(app.X2(indx{j},fs),y{j},'ClassNames',[false true],'Standardize',true,'KernelFunction','gaussian','BoxConstraint',1,'HyperparameterOptimizationOptions',struct('AcquisitionFunctionName','OptimizeHyperparameters','auto',...
+                         'expected-improvement-plus','ShowPlots',true));%box = optimizableVariable('box',[1e-4,1e3],'Transform','log','Optimize',true);
+                    
+                       [pred{j},~] = predict(SVMModels{j},app.X2(indx{j},fs));
+                    %   gscatter(X((index_tr),3),X((index_tr),2),Y1(index_tr),[(j-1)/N j/N (j-1)/N;(j-1)/N j/N (j-1)/N],'xo');
+                    %   [(j-1)/N j/N (j-1)/N;(j-1)/N j/N (j-1)/N]
+                        pred{j} = j*pred{j};    
+                    %    figure
+                        gscatter(app.X2(indx{j},1),app.X2(indx{j},2),pred{j},colors(j),'ox');
+                    %    gscatter(X(indx{j},3),X(indx{j},2),pred(indx{j},j) == y{j}(indx{j},:),colors(j),'ox');
+                        hold on
+                        Pred(j) = sum(pred{j}==y{j})
+                    
+                    end
+                    xlim =[-30 40]
+                    ylim =[-40 140]
+                    title(app.UIAxes,'Theta0 prediction');
+                    xlabel(app.UIAxes,'location difference');
+                    ylabel(app.UIAxes,'angle difference');
+                    legend(app.UIAxes,'10^-5','10^-9')
+                    set(app.UIAxes,'xlim',xlim);
+                    set(app.UIAxes, 'ylim',ylim);
+                    accuracy = sum(Pred)/length(app.Y2(svInd));
+                    [h,~] = ttest([pred{1,2};pred{1,3};pred{1,4};pred{1,1};],Train_data(:,8),'Alpha',0.01)
+                
+        end
+    end
+
+    % App initialization and construction
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create Somatosensory
+            app.Somatosensory = uifigure;
+            app.Somatosensory.Position = [100 100 659 501];
+            app.Somatosensory.Name = 'UI Figure';
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.Somatosensory);
+            title(app.UIAxes, 'BrainQ')
+            xlabel(app.UIAxes, 'X')
+            ylabel(app.UIAxes, 'Y')
+            app.UIAxes.YLim = [-50 150];
+            app.UIAxes.ZLim = [0 1];
+            app.UIAxes.Position = [2 145 395 357];
+
+            % Create Label
+            app.Label = uilabel(app.Somatosensory);
+            app.Label.HorizontalAlignment = 'right';
+            app.Label.Position = [488 413 25 22];
+            app.Label.Text = '';
+
+            % Create DropDown
+            app.DropDown = uidropdown(app.Somatosensory);
+            app.DropDown.Items = {'GBMF Potential', 'ERP-Corrected Baseline ', 'Log Power', 'P-Value'};
+            app.DropDown.ValueChangedFcn = createCallbackFcn(app, @DropDownValueChanged, true);
+            app.DropDown.Position = [518 415 100 19];
+            app.DropDown.Value = 'GBMF Potential';
+
+            % Create coherenceanalysisDropDownLabel
+            app.coherenceanalysisDropDownLabel = uilabel(app.Somatosensory);
+            app.coherenceanalysisDropDownLabel.HorizontalAlignment = 'right';
+            app.coherenceanalysisDropDownLabel.Position = [413 89 108 22];
+            app.coherenceanalysisDropDownLabel.Text = 'coherence analysis';
+
+            % Create coherenceanalysisDropDown
+            app.coherenceanalysisDropDown = uidropdown(app.Somatosensory);
+            app.coherenceanalysisDropDown.Items = {'MS coherence', 'MVAR coherence', 'BIC'};
+            app.coherenceanalysisDropDown.ValueChangedFcn = createCallbackFcn(app, @coherenceanalysisDropDownValueChanged, true);
+            app.coherenceanalysisDropDown.Position = [528 91 96 19];
+            app.coherenceanalysisDropDown.Value = 'MS coherence';
+
+            % Create DropDown_2
+            app.DropDown_2 = uilabel(app.Somatosensory);
+            app.DropDown_2.HorizontalAlignment = 'right';
+            app.DropDown_2.Position = [426 413 82 22];
+            app.DropDown_2.Text = 'Preprocessing';
+
+            % Create EEGMEGchannels3a3b1KnobLabel
+            app.EEGMEGchannels3a3b1KnobLabel = uilabel(app.Somatosensory);
+            app.EEGMEGchannels3a3b1KnobLabel.HorizontalAlignment = 'center';
+            app.EEGMEGchannels3a3b1KnobLabel.Position = [434 280 188 22];
+            app.EEGMEGchannels3a3b1KnobLabel.Text = 'EEG & MEG channels(3a->3b->1)';
+
+            % Create EEGMEGchannels3a3b1Knob
+            app.EEGMEGchannels3a3b1Knob = uiknob(app.Somatosensory, 'discrete');
+            app.EEGMEGchannels3a3b1Knob.Items = {'4', '33', '18', '27', '13', '5'};
+            app.EEGMEGchannels3a3b1Knob.ValueChangedFcn = createCallbackFcn(app, @EEGMEGchannels3a3b1KnobValueChanged, true);
+            app.EEGMEGchannels3a3b1Knob.Position = [498 322 60 60];
+            app.EEGMEGchannels3a3b1Knob.Value = '5';
+
+            % Create ClinicalDataButtonGroup
+            app.ClinicalDataButtonGroup = uibuttongroup(app.Somatosensory);
+            app.ClinicalDataButtonGroup.SelectionChangedFcn = createCallbackFcn(app, @ClinicalDataButtonGroupSelectionChanged, true);
+            app.ClinicalDataButtonGroup.Title = 'Clinical Data';
+            app.ClinicalDataButtonGroup.Position = [450 447 166 45];
+
+            % Create EEGButton
+            app.EEGButton = uiradiobutton(app.ClinicalDataButtonGroup);
+            app.EEGButton.Text = 'EEG';
+            app.EEGButton.Position = [11 -1 58 22];
+            app.EEGButton.Value = true;
+
+            % Create MEGButton
+            app.MEGButton = uiradiobutton(app.ClinicalDataButtonGroup);
+            app.MEGButton.Text = 'MEG';
+            app.MEGButton.Position = [87 1 65 22];
+
+            % Create HanningWindowforForForierTransformEditFieldLabel
+            app.HanningWindowforForForierTransformEditFieldLabel = uilabel(app.Somatosensory);
+            app.HanningWindowforForForierTransformEditFieldLabel.HorizontalAlignment = 'right';
+            app.HanningWindowforForForierTransformEditFieldLabel.Position = [407 255 224 17];
+            app.HanningWindowforForForierTransformEditFieldLabel.Text = 'Hanning Window for For Forier Transform';
+
+            % Create HanningWindowforForForierTransformEditField
+            app.HanningWindowforForForierTransformEditField = uieditfield(app.Somatosensory, 'numeric');
+            app.HanningWindowforForForierTransformEditField.ValueChangedFcn = createCallbackFcn(app, @HanningWindowforForForierTransformEditFieldValueChanged, true);
+            app.HanningWindowforForForierTransformEditField.Position = [440 228 32 22];
+            app.HanningWindowforForForierTransformEditField.Value = 31;
+
+            % Create EditField_2
+            app.EditField_2 = uieditfield(app.Somatosensory, 'numeric');
+            app.EditField_2.Position = [494 172 28 22];
+            app.EditField_2.Value = 85;
+
+            % Create EditField_3
+            app.EditField_3 = uieditfield(app.Somatosensory, 'numeric');
+            app.EditField_3.ValueChangedFcn = createCallbackFcn(app, @EditField_3ValueChanged, true);
+            app.EditField_3.Position = [537 172 30 22];
+            app.EditField_3.Value = 15;
+
+            % Create FFTlengthLabel
+            app.FFTlengthLabel = uilabel(app.Somatosensory);
+            app.FFTlengthLabel.Position = [413 145 64 22];
+            app.FFTlengthLabel.Text = 'FFT length';
+
+            % Create fsamplingLabel
+            app.fsamplingLabel = uilabel(app.Somatosensory);
+            app.fsamplingLabel.Position = [483 201 57 22];
+            app.fsamplingLabel.Text = 'fsampling';
+
+            % Create FpassLabel
+            app.FpassLabel = uilabel(app.Somatosensory);
+            app.FpassLabel.Position = [549 201 38 22];
+            app.FpassLabel.Text = 'Fpass';
+
+            % Create spectralanalysisDropDownLabel
+            app.spectralanalysisDropDownLabel = uilabel(app.Somatosensory);
+            app.spectralanalysisDropDownLabel.HorizontalAlignment = 'right';
+            app.spectralanalysisDropDownLabel.Position = [424 54 94 22];
+            app.spectralanalysisDropDownLabel.Text = 'spectral analysis';
+
+            % Create spectralanalysisDropDown
+            app.spectralanalysisDropDown = uidropdown(app.Somatosensory);
+            app.spectralanalysisDropDown.Items = {'(Sensor)_Cross_Spectrum', 'SNR'};
+            app.spectralanalysisDropDown.ValueChangedFcn = createCallbackFcn(app, @spectralanalysisDropDownValueChanged, true);
+            app.spectralanalysisDropDown.Position = [528 54 99 22];
+            app.spectralanalysisDropDown.Value = '(Sensor)_Cross_Spectrum';
+
+            % Create ForwardSimulationLabel
+            app.ForwardSimulationLabel = uilabel(app.Somatosensory);
+            app.ForwardSimulationLabel.Position = [517 115 109 22];
+            app.ForwardSimulationLabel.Text = 'Forward Simulation';
+
+            % Create DropDown_3
+            app.DropDown_3 = uidropdown(app.Somatosensory);
+            app.DropDown_3.Items = {'Source_Partial_Coherence', 'ADF on Gamma Band', 'PDC on Gamma Band'};
+            app.DropDown_3.ValueChangedFcn = createCallbackFcn(app, @DropDown_3ValueChanged, true);
+            app.DropDown_3.Position = [426 18 203 23];
+            app.DropDown_3.Value = 'Source_Partial_Coherence';
+
+            % Create GscatterDropDownLabel
+            app.GscatterDropDownLabel = uilabel(app.Somatosensory);
+            app.GscatterDropDownLabel.HorizontalAlignment = 'right';
+            app.GscatterDropDownLabel.Position = [26 52 54 22];
+            app.GscatterDropDownLabel.Text = 'Gscatter ';
+
+            % Create GscatterDropDown
+            app.GscatterDropDown = uidropdown(app.Somatosensory);
+            app.GscatterDropDown.Items = {'Location', 'Scaling Parameter', 'Hyperprior', 'Noise'};
+            app.GscatterDropDown.ValueChangedFcn = createCallbackFcn(app, @GscatterDropDownValueChanged, true);
+            app.GscatterDropDown.Position = [95 52 143 22];
+            app.GscatterDropDown.Value = 'Location';
+
+            % Create SyntheticDataButtonGroup
+            app.SyntheticDataButtonGroup = uibuttongroup(app.Somatosensory);
+            app.SyntheticDataButtonGroup.SelectionChangedFcn = createCallbackFcn(app, @SyntheticDataButtonGroupSelectionChanged, true);
+            app.SyntheticDataButtonGroup.Title = 'Synthetic Data';
+            app.SyntheticDataButtonGroup.Position = [271 54 118 71];
+
+            % Create IAS_MAPresultButton
+            app.IAS_MAPresultButton = uiradiobutton(app.SyntheticDataButtonGroup);
+            app.IAS_MAPresultButton.Text = 'IAS_MAP result';
+            app.IAS_MAPresultButton.Position = [10 25 107 22];
+            app.IAS_MAPresultButton.Value = true;
+
+            % Create CMresultButton
+            app.CMresultButton = uiradiobutton(app.SyntheticDataButtonGroup);
+            app.CMresultButton.Text = 'CM result';
+            app.CMresultButton.Position = [11 1 73 22];
+
+            % Create PredictionEvaluationDropDownLabel
+            app.PredictionEvaluationDropDownLabel = uilabel(app.Somatosensory);
+            app.PredictionEvaluationDropDownLabel.HorizontalAlignment = 'right';
+            app.PredictionEvaluationDropDownLabel.Position = [16 18 130 22];
+            app.PredictionEvaluationDropDownLabel.Text = 'Prediction & Evaluation';
+
+            % Create PredictionEvaluationDropDown
+            app.PredictionEvaluationDropDown = uidropdown(app.Somatosensory);
+            app.PredictionEvaluationDropDown.Items = {'SVM scaling parameter prediction', 'Discriminant analysis location prediction'};
+            app.PredictionEvaluationDropDown.ValueChangedFcn = createCallbackFcn(app, @PredictionEvaluationDropDownValueChanged, true);
+            app.PredictionEvaluationDropDown.Position = [154 20 226 19];
+            app.PredictionEvaluationDropDown.Value = 'SVM scaling parameter prediction';
+
+            % Create SVMOutlierDetectionButton
+            app.SVMOutlierDetectionButton = uibutton(app.Somatosensory, 'push');
+            app.SVMOutlierDetectionButton.ButtonPushedFcn = createCallbackFcn(app, @SVMOutlierDetectionButtonPushed, true);
+            app.SVMOutlierDetectionButton.Position = [69 91 169 25];
+            app.SVMOutlierDetectionButton.Text = 'SVM Outlier Detection';
+
+            % Create HanningWindowforForForierTransformEditField_2
+            app.HanningWindowforForForierTransformEditField_2 = uieditfield(app.Somatosensory, 'numeric');
+            app.HanningWindowforForForierTransformEditField_2.ValueChangedFcn = createCallbackFcn(app, @HanningWindowforForForierTransformEditField_2ValueChanged, true);
+            app.HanningWindowforForForierTransformEditField_2.Position = [440 172 32 22];
+            app.HanningWindowforForForierTransformEditField_2.Value = 75;
+
+            % Create HanningWindowforForForierTransformEditField_3
+            app.HanningWindowforForForierTransformEditField_3 = uieditfield(app.Somatosensory, 'numeric');
+            app.HanningWindowforForForierTransformEditField_3.ValueChangedFcn = createCallbackFcn(app, @HanningWindowforForForierTransformEditField_3ValueChanged, true);
+            app.HanningWindowforForForierTransformEditField_3.Position = [493 228 28 22];
+            app.HanningWindowforForForierTransformEditField_3.Value = 1200;
+
+            % Create HanningWindowforForForierTransformEditField_4
+            app.HanningWindowforForForierTransformEditField_4 = uieditfield(app.Somatosensory, 'numeric');
+            app.HanningWindowforForForierTransformEditField_4.ValueChangedFcn = createCallbackFcn(app, @HanningWindowforForForierTransformEditField_4ValueChanged, true);
+            app.HanningWindowforForForierTransformEditField_4.Position = [537 228 28 22];
+            app.HanningWindowforForForierTransformEditField_4.Value = 8;
+
+            % Create tendEditFieldLabel
+            app.tendEditFieldLabel = uilabel(app.Somatosensory);
+            app.tendEditFieldLabel.HorizontalAlignment = 'right';
+            app.tendEditFieldLabel.Position = [585 145 39 22];
+            app.tendEditFieldLabel.Text = 'tend';
+
+            % Create tendEditField
+            app.tendEditField = uieditfield(app.Somatosensory, 'numeric');
+            app.tendEditField.ValueChangedFcn = createCallbackFcn(app, @tendEditFieldValueChanged, true);
+            app.tendEditField.Position = [581 172 32 22];
+            app.tendEditField.Value = 250;
+
+            % Create HanningWindowforForForierTransformEditField_5
+            app.HanningWindowforForForierTransformEditField_5 = uieditfield(app.Somatosensory, 'numeric');
+            app.HanningWindowforForForierTransformEditField_5.ValueChangedFcn = createCallbackFcn(app, @HanningWindowforForForierTransformEditField_5ValueChanged, true);
+            app.HanningWindowforForForierTransformEditField_5.Position = [583 228 28 22];
+            app.HanningWindowforForForierTransformEditField_5.Value = 70;
+
+            % Create FstopLabel
+            app.FstopLabel = uilabel(app.Somatosensory);
+            app.FstopLabel.Position = [589 201 36 22];
+            app.FstopLabel.Text = 'Fstop';
+
+            % Create WindowlengthsLabel_2
+            app.WindowlengthsLabel_2 = uilabel(app.Somatosensory);
+            app.WindowlengthsLabel_2.Position = [388 201 90 22];
+            app.WindowlengthsLabel_2.Text = 'Window lengths';
+
+            % Create ZeroPadLabel_2
+            app.ZeroPadLabel_2 = uilabel(app.Somatosensory);
+            app.ZeroPadLabel_2.Position = [488 145 55 22];
+            app.ZeroPadLabel_2.Text = 'Zero Pad';
+
+            % Create tstartLabel
+            app.tstartLabel = uilabel(app.Somatosensory);
+            app.tstartLabel.Position = [556 145 32 22];
+            app.tstartLabel.Text = 'tstart';
+        end
+    end
+
+    methods (Access = public)
+
+        % Construct app
+        function app = somatosensory
+
+            % Create and configure components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.Somatosensory)
+
+            % Execute the startup function
+            runStartupFcn(app, @startupFcn)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.Somatosensory)
+        end
+    end
+end]]></w:t></w:r></w:p></w:body></w:document>
